@@ -10,6 +10,7 @@
 """
 
 import pdb, os
+from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import label as splabel
@@ -107,6 +108,13 @@ class EnhancedWatershed(object):
         marked_so_far = []
         plot_data = plt.figimage(np.flipud(input_grid))
         myimg('input_grid')
+        ncf = Dataset('q_data.nc','w')
+        pdb.set_trace()
+        xdim = ncf.createDimension('x',q_data.shape[1])
+        ydim = ncf.createDimension('y',q_data.shape[0])
+        ncf.createVariable('q_data', q_data.dtype, ('y','x'))
+        ncf.variables['q_data'][:] = q_data
+        ncf.close()
         # Find the maxima. These are high-values with enough clearance
         # around them.
         # Work from high to low bins. The pixels in the highest bin mark their
@@ -142,7 +150,7 @@ class EnhancedWatershed(object):
                         for m in marked_so_far:
                             marked[m] = self.UNMARKED
         # Erase marks and start over. You have a list of centers now.
-        print "found maximas and marked their neighborhoods"
+        print "found local maximas, marked their neighborhoods"
         plot_data = plt.figimage(np.flipud(marked))
         myimg('neighborhood')
         marked[:, :] = self.UNMARKED
@@ -157,6 +165,7 @@ class EnhancedWatershed(object):
                 del deferred_to_next[:]
                 foothills = []
                 n_centers = len(centers[b])
+                print "looking at centers in bin",b,centers[b],"and deferred_from_last",deferred_from_last
                 tot_centers = n_centers + len(deferred_from_last)
                 for i in range(tot_centers):
                     # done this way to minimize memory overhead of maintaining two lists
@@ -175,7 +184,7 @@ class EnhancedWatershed(object):
                             pass
                 # this is the last one for this bin
                 self.remove_foothills(q_data, marked, b, bin_lower, centers, foothills)
-                print "delta",delta,'out of',self.delta,"bin",b
+                print "find_local_maxima: delta",delta,'out of',self.delta,"bin",b
             del deferred_from_last[:]
             del deferred_to_next[:]
         plot_data = plt.figimage(np.flipud(marked))
@@ -203,6 +212,7 @@ class EnhancedWatershed(object):
         will_be_considered_again = False
         as_bin.append(center)
         center_data = q_data[center]
+        print "set_maximum: grow region around",center
         while len(as_bin) > 0:
             p = as_bin.pop(-1) # remove and return last pixel in as_bin
             if marked[p] != self.UNMARKED: # already processed
@@ -218,18 +228,22 @@ class EnhancedWatershed(object):
                     p_data = q_data[pixel]
                     if (not will_be_considered_again) and (p_data >= 0) and (p_data < center_data):
                         will_be_considered_again = True
+                        print "set_maximum: consider",pixel,"again"
                     if p_data >= bin_lower and (np.abs(center_data - p_data) <= self.delta):
                         as_bin.append(pixel)
+                        print "set_maximum: add",pixel,"to peak of",center
                     # Do not check that this is the closest: this way, a narrow channel of globbed pixels form
                     elif p_data >= 0:
+                        print "set_maximum: add",pixel,"to foothills of",center
                         as_glob.append(pixel)
         if bin_lower == 0:
             will_be_considered_again = False
         big_enough = len(marked_so_far) >= self.max_size
-        print 'center',center,'bin_lower',bin_lower,len(marked_so_far),'out of',self.max_size
+        print 'set_maximum: center',center,'bin_lower',bin_lower,"area",len(marked_so_far)
         if big_enough:
             # remove lower values within region of influence
             foothills.append((center, as_glob))
+            print 'adding as_glob to foothills:',as_glob
         elif will_be_considered_again: # remove the check if you want to ignore regions smaller than max_size
             for m in marked_so_far:
                 marked[m] = self.UNMARKED
@@ -312,7 +326,7 @@ class EnhancedWatershed(object):
         return np.all((np.array(point) >= 0) & (np.array(shape) - np.array(point) > 0))
 
 
-def rescale_data(data, data_min, data_max, out_min=0.0, out_max=100.0):
+def rescale_data(data, data_min, data_max, out_min=0.0, out_max=255.0):
     """
     Rescale your input data so that is ranges over integer values, which will perform better in the watershed.
 
