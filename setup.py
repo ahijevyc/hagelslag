@@ -23,6 +23,7 @@ else:
                 "scikit-learn>=0.16",
                 "scikit-image",
                 "pyproj",
+                "xarray",
                 "pygrib",
                 "arrow>=0.8.0",
                 ]
@@ -34,7 +35,7 @@ if __name__ == "__main__":
           version="0.3",
           description="Object-based severe weather forecast system",
           author="David John Gagne",
-          author_email="djgagne@ou.edu",
+          author_email="dgagne@ucar.edu",
           long_description=pkg_description,
           license="MIT",
           url="https://github.com/djgagne/hagelslag",

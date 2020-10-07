@@ -3,7 +3,6 @@ from skimage.measure import regionprops
 from skimage.segmentation import find_boundaries
 from skimage.morphology import convex_hull_image
 import json
-import os
 
 
 class STObject(object):
@@ -397,13 +396,16 @@ class STObject(object):
         """
         ti = np.where(self.times == time)[0][0]
         ma = np.where(self.masks[ti].ravel() == 1)
+        if len(self.attributes[attribute][ti].ravel()[ma]) < 1:
+            stat_val = np.nan
+            return stat_val
         if statistic in ['mean', 'max', 'min', 'std', 'ptp']:
             stat_val = getattr(self.attributes[attribute][ti].ravel()[ma], statistic)()
         elif statistic == 'median':
             stat_val = np.median(self.attributes[attribute][ti].ravel()[ma])
         elif statistic == "skew":
             stat_val = np.mean(self.attributes[attribute][ti].ravel()[ma]) - \
-                       np.median(self.attributes[attribute][ti].ravel()[ma])
+                    np.median(self.attributes[attribute][ti].ravel()[ma])
         elif 'percentile' in statistic:
             per = int(statistic.split("_")[1])
             stat_val = np.percentile(self.attributes[attribute][ti].ravel()[ma], per)
@@ -463,8 +465,7 @@ class STObject(object):
         try:
             all_props = [regionprops(m) for m in self.masks]
         except TypeError:
-            print(self.masks)
-            exit()
+            raise TypeError("masks not the right type")
         for stat in stat_names:
             stats[stat] = np.mean([p[0][stat] for p in all_props])
         return stats
@@ -482,8 +483,14 @@ class STObject(object):
 
         """
         ti = np.where(self.times == time)[0][0]
-        props = regionprops(self.masks[ti], self.timesteps[ti])[0]
         shape_stats = []
+        try:
+            props = regionprops(self.masks[ti], self.timesteps[ti])[0]           
+        except:
+            for stat_name in stat_names:
+                shape_stats.append(np.nan)
+            return shape_stats
+
         for stat_name in stat_names:
             if "moments_hu" in stat_name:
                 hu_index = int(stat_name.split("_")[-1])

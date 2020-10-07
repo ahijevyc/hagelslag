@@ -2,6 +2,7 @@ from __future__ import division
 from .SSEFModelGrid import SSEFModelGrid
 from .VSEModelGrid import VSEModelGrid
 from .NCARModelGrid import NCARModelGrid
+from .FV3ModelGrid import FV3ModelGrid
 from .HRRRModelGrid import HRRRModelGrid
 from .HRRREModelGrid import HRRREModelGrid
 from .HREFv2ModelGrid import HREFv2ModelGrid
@@ -131,13 +132,21 @@ class ModelOutput(object):
                                self.variable,
                                self.start_date,
                                self.end_date,
-                               self.path,
-                               single_step=self.single_step)
-
+                               self.path)
             self.data, self.units = mg.load_data()
         
         elif self.ensemble_name.upper() == "HRRRE":
             mg = HRRREModelGrid(self.member_name,
+                               self.run_date,
+                               self.variable,
+                               self.start_date,
+                               self.end_date,
+                               self.path,
+                               single_step=self.single_step)
+            self.data, self.units = mg.load_data()
+        
+        elif self.ensemble_name.upper() == "SAR-FV3":
+            mg = FV3ModelGrid(self.member_name,
                                self.run_date,
                                self.variable,
                                self.start_date,
